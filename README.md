@@ -67,12 +67,12 @@ To use the saved model / 使用已保存的模型：
 ```powershell
 $checkpoint = "outputs/20260919_120214_330283/best_model.pth"
 python src/evaluate.py --checkpoint $checkpoint
-python src/predict.py --checkpoint $checkpoint --image "path/to/image.jpg"
+python src/predict.py --checkpoint $checkpoint --image "data/manual/demo.jpg"
 ```
 
-Replace `path/to/image.jpg` with your image path. Evaluation needs the local test dataset; single-image prediction only needs the model and your image.
+Place your own images in `data/manual/` and replace `demo.jpg` with the filename you want to test. Evaluation needs the local test dataset; single-image prediction only needs the model and your image.
 
-中文备注：把图片路径换成自己的。评估需要本地测试集，单图预测不需要下载整套数据集。模型给出的分数不保证判断正确。
+中文备注：手动测试的图片统一放在 `data/manual/`，把 `demo.jpg` 换成实际文件名。评估需要本地测试集，单图预测只需要模型和待测图片。模型给出的分数不保证判断正确。
 
 ## Saved Results / 已保存的结果
 
@@ -92,22 +92,10 @@ Run from the project root in PowerShell. No environment activation is needed.
 
 在项目根目录打开 PowerShell，直接运行，无需先激活环境。
 
-**Evaluate the test set / 测试整套测试集**
+Put all images for manual testing in `data/manual/`. Replace `demo.jpg` with the filename you want to test.
 
-Requires the prepared `data/split/test/` folder. Prints accuracy and saves predictions to `test_predictions.csv` beside the model, replacing the previous file.
-
-需要本地已有测试集。运行后显示准确率，并覆盖模型所在文件夹中的预测结果表。
+所有手动测试图片都放在 `data/manual/`。把 `demo.jpg` 换成要测试的图片文件名。
 
 ```powershell
-.\.venv\Scripts\python.exe src/evaluate.py --checkpoint "outputs/20260919_120214_330283/best_model.pth"
-```
-
-**Test your own image / 测试自己的图片**
-
-Replace `C:\path\to\image.jpg` with your image's actual path. Prints the predicted class and scores.
-
-把下面的图片路径换成自己的实际路径，运行后会显示是否为机场及模型分数。
-
-```powershell
-.\.venv\Scripts\python.exe src/predict.py --checkpoint "outputs/20260919_120214_330283/best_model.pth" --image "C:\path\to\image.jpg"
+.\.venv\Scripts\python.exe src/predict.py --checkpoint "outputs/20260919_120214_330283/best_model.pth" --image "data/manual/demo.jpg"
 ```
