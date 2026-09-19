@@ -1,0 +1,69 @@
+AirSpotter 项目日志 日期：2026-09-18
+
+一、今天完成了什么
+
+今天正式开始搭建 AirSpotter 项目。
+
+项目目标： 使用计算机视觉（Computer Vision）从卫星影像中识别机场。
+
+长期计划： V1：Airport / Non-Airport 二分类 V2：机场目标检测（Object
+Detection） V3：不同地区之间的泛化研究（Cross-Region Generalization）
+V4：全球范围机场扫描与识别
+
+今天完成的工作：
+
+1.  创建 AirSpotter 项目，并建立 Git 仓库。
+2.  将项目 push 到 GitHub。
+3.  创建 .gitignore，避免上传 .venv、RESISC45、data
+    和模型权重等大型/本地文件。
+4.  下载 NWPU-RESISC45 遥感影像数据集。
+5.  确定 AirSpotter V1：Satellite Image -> Airport / Non-Airport。
+6.  确定第一版数据集规模：Airport 700 张 + Non-Airport 700 张，共 1400
+    张。
+7.  Non-Airport
+    选择容易与机场混淆的类别，例如高速公路、铁路、停车场、工业区、港口、桥梁、交叉路口、矩形农田和商业区。
+8.  设计 prepare_dataset.py：从 RESISC45 中整理 Airport / Non-Airport
+    数据。
+9.  设计 show_samples.py：随机显示图片，在训练前人工检查数据和标签。
+10. README 采用“英文主体 +
+    中文备注”，记录项目目标、数据集、项目结构、未来计划和当前进度。
+
+当前流程：
+
+RESISC45 原始数据 ↓ prepare_dataset.py ↓ 700 Airport + 700 Non-Airport ↓
+show_samples.py ↓ 人工检查数据 ↓ Train / Validation / Test ↓ ResNet18 ↓
+Airport / Non-Airport
+
+二、明天做什么
+
+1.  运行： python src/prepare_dataset.py
+
+目标： Airport: 700 Non-airport: 700 Total: 1400
+
+2.  运行： python src/show_samples.py
+
+随机查看 Airport 和 Non-Airport 图片，确认数据和标签没有明显问题。
+
+3.  划分数据集： Train：70% Validation：15% Test：15%
+
+约为： Train：980 Validation：210 Test：210
+
+4.  如果前面顺利完成，安装和配置 PyTorch。
+
+5.  建立第一个 ResNet18 baseline，使用预训练 ResNet18 进行 Transfer
+    Learning。
+
+三、明天核心目标
+
+完成数据整理和人工检查，并理解 Train / Validation / Test 的作用。
+
+如果时间足够，开始第一次 ResNet18 训练。
+
+当前进度：
+
+[完成] 项目创建 [完成] Git / GitHub [完成] .gitignore [完成] RESISC45
+下载 [完成] V1 数据设计 [完成] prepare_dataset.py 设计 [完成]
+show_samples.py 设计 [完成] README 初步设计
+
+[下一步] 生成 700 + 700 数据集 [下一步] 检查数据 [下一步] Train /
+Validation / Test [下一步] ResNet18 baseline
