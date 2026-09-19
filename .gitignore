@@ -1,0 +1,23 @@
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Raw datasets
+RESISC45/
+
+# Prepared training images
+data/
+
+# Model weights
+*.pth
+*.pt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
