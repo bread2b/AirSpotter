@@ -85,3 +85,29 @@ The run in `outputs/20260919_120214_330283/` contains:
 Next: test more images from different sources and inspect mistakes.
 
 下一步：用更多不同来源的图片测试，看看模型在哪些情况下容易判断错误。
+
+## Test Commands / 测试指令
+
+Run from the project root in PowerShell. No environment activation is needed.
+
+在项目根目录打开 PowerShell，直接运行，无需先激活环境。
+
+**Evaluate the test set / 测试整套测试集**
+
+Requires the prepared `data/split/test/` folder. Prints accuracy and saves predictions to `test_predictions.csv` beside the model, replacing the previous file.
+
+需要本地已有测试集。运行后显示准确率，并覆盖模型所在文件夹中的预测结果表。
+
+```powershell
+.\.venv\Scripts\python.exe src/evaluate.py --checkpoint "outputs/20260919_120214_330283/best_model.pth"
+```
+
+**Test your own image / 测试自己的图片**
+
+Replace `C:\path\to\image.jpg` with your image's actual path. Prints the predicted class and scores.
+
+把下面的图片路径换成自己的实际路径，运行后会显示是否为机场及模型分数。
+
+```powershell
+.\.venv\Scripts\python.exe src/predict.py --checkpoint "outputs/20260919_120214_330283/best_model.pth" --image "C:\path\to\image.jpg"
+```
