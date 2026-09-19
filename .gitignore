@@ -9,7 +9,11 @@ __pycache__/
 RESISC45/
 
 # Prepared training images
-data/
+data/**
+!data/airport/
+!data/non_airport/
+!data/airport/.gitkeep
+!data/non_airport/.gitkeep
 
 # Model weights
 *.pth
