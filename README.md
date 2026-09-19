@@ -1,87 +1,87 @@
 # AirSpotter V1
 
-AirSpotter is a beginner-friendly Python project that aims to tell whether a satellite image contains an airport.
+A Python project that classifies satellite images as **airport** or **non-airport**, using ResNet18.
 
-中文备注：一个适合入门的 Python 项目，用来判断卫星图片中是否有机场。
+中文备注：判断卫星图片中有没有机场，目前支持训练、测试和单张图片预测，不支持画框定位。
 
-## Current Progress / 当前进度
+## Progress / 当前进度
 
-The project folders and Python environment are ready. Two scripts are available to prepare images from the local RESISC45 dataset and preview examples. No model has been built.
+The first model has been trained on a dataset of 700 airport and 700 non-airport images. The split contains 980 training, 210 validation, and 210 test images.
 
-中文备注：文件夹和 Python 环境已准备好，目前有整理数据和预览图片的两个脚本，还没有开始做模型。
+**Test accuracy: 97.62% (205/210 correct).** This result applies to the current RESISC45-based test set; performance on images from other sources still needs testing.
 
-## Folder Structure / 文件夹结构
+中文备注：第一版已完成，测试集答对 205 张、答错 5 张。这个成绩不代表所有卫星图片上的准确率。
+
+## Files / 文件说明
 
 ```text
 AirSpotter/
-├── .venv/              # Local Python environment / 本地 Python 环境
-├── RESISC45/           # Original dataset / 原始数据集
-├── data/
-│   ├── airport/        # Images with airports / 有机场的图片
-│   └── non_airport/    # Images without airports / 没有机场的图片
-├── src/                # Python code / Python 代码
-│   ├── prepare_dataset.py
-│   └── show_samples.py
-├── notebooks/          # Jupyter notebooks / 交互式笔记本
-├── results/            # Charts and results / 图表和结果
+├── src/
+│   ├── prepare_dataset.py  # Prepare images / 整理图片
+│   ├── show_samples.py     # Preview samples / 预览图片
+│   ├── split_dataset.py    # Split the dataset / 划分数据
+│   ├── train.py            # Train ResNet18 / 训练模型
+│   ├── evaluate.py         # Test the model / 评估模型
+│   └── predict.py          # Predict one image / 单图预测
+├── outputs/                # Saved model and training results / 模型和训练结果
+├── results/                # Additional charts / 其他图表
+├── notebooks/              # Jupyter notebooks / 笔记本
+├── data/                   # Prepared images and splits / 整理后的图片
+├── RESISC45/               # Original dataset / 原始数据集
+├── .venv/                  # Local Python environment / 本地环境
 ├── .gitignore
 └── README.md
 ```
 
-The dataset, training images, and `.venv/` stay on your computer and are ignored by Git. Small `.gitkeep` files keep empty project folders visible on GitHub.
+Code, model weights, and training results can be pushed to GitHub. `RESISC45/`, images in `data/`, and `.venv/` stay local.
 
-中文备注：数据集、训练图片和虚拟环境只留在本地，不上传 GitHub。`.gitkeep` 用于保留空文件夹。
+中文备注：上传代码、模型和结果，不上传原始数据集、训练图片和虚拟环境。
 
-## Python Environment / Python 环境
+## Run / 使用方法
 
-The local environment uses Python 3.12 with NumPy, Matplotlib, Pillow, and Jupyter installed.
+Use Python 3.12 with PyTorch, torchvision, NumPy, Matplotlib, and Pillow. Jupyter is optional. Training currently requires an NVIDIA GPU and a CUDA-enabled PyTorch installation; evaluation and prediction also support CPU.
 
-中文备注：本地使用 Python 3.12，已安装基础的数据处理、图片查看和笔记本工具。
+中文备注：本地环境已配置好。换电脑需要重新安装环境；当前训练脚本需要 NVIDIA 显卡，预测可以用 CPU。
 
-From the project folder in PowerShell, activate it:
-
-在项目根目录打开 PowerShell，激活环境：
+From the project root in PowerShell / 在项目根目录运行：
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-To open Jupyter without activating the environment:
-
-不激活环境也可以直接启动 Jupyter：
+To prepare data and train a new model / 整理数据并训练新模型：
 
 ```powershell
-.\.venv\Scripts\python.exe -m notebook
+python src/prepare_dataset.py
+python src/show_samples.py
+python src/split_dataset.py
+python src/train.py
 ```
 
-On another computer, install Python 3.12 and create a new environment:
+`prepare_dataset.py` replaces the two prepared image folders. `split_dataset.py` expects 700 images per class and will stop if `data/split/` already exists. Training may download pretrained weights on its first run.
 
-换一台电脑时，先安装 Python 3.12，再新建环境并安装基础包：
+中文备注：整理脚本会清空并重建两类图片文件夹；已有数据划分时不用重复运行。使用现成模型预测时，可跳过以上四步。
+
+To use the saved model / 使用已保存的模型：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install numpy matplotlib pillow jupyter
+$checkpoint = "outputs/20260919_120214_330283/best_model.pth"
+python src/evaluate.py --checkpoint $checkpoint
+python src/predict.py --checkpoint $checkpoint --image "path/to/image.jpg"
 ```
 
-## Scripts / 脚本用途
+Replace `path/to/image.jpg` with your image path. Evaluation needs the local test dataset; single-image prediction only needs the model and your image.
 
-- `prepare_dataset.py`: Copies airport images and selects up to 70 images from each of 10 other scene categories into the two `data/` folders. Running it replaces the existing contents of those folders.
-  中文备注：复制机场图片，并从另外 10 类场景中各选最多 70 张，整理到两个数据文件夹。每次运行都会清空并重新生成这两个文件夹里的内容。
-- `show_samples.py`: Shows 8 airport and 8 non-airport images in a grid so you can check them visually. Run it after preparing the dataset, with at least 8 images in each folder.
-  中文备注：各展示 8 张机场和非机场图片，方便检查分类是否正确。先整理数据，并确保每类至少有 8 张图片。
+中文备注：把图片路径换成自己的。评估需要本地测试集，单图预测不需要下载整套数据集。模型给出的分数不保证判断正确。
 
-Run these commands from the project folder:
+## Saved Results / 已保存的结果
 
-在项目根目录依次运行：
+The run in `outputs/20260919_120214_330283/` contains:
 
-```powershell
-.\.venv\Scripts\python.exe src/prepare_dataset.py
-.\.venv\Scripts\python.exe src/show_samples.py
-```
+- `best_model.pth`: Best model, selected at epoch 3 / 第 3 轮选出的最佳模型。
+- `history.csv`: Training and validation results for 10 epochs / 10 轮训练记录。
+- `test_predictions.csv`: Predictions for all 210 test images / 每张测试图片的预测结果。
 
-## Next Steps / 下一步
+Next: test more images from different sources and inspect mistakes.
 
-1. Check the dataset's usage terms. / 确认数据集的使用条件。
-2. Prepare images using `prepare_dataset.py`. / 运行脚本整理图片。
-3. Preview some images and check their labels. / 预览图片，检查分类。
-4. Build a simple model later. / 之后再做一个简单模型。
+下一步：用更多不同来源的图片测试，看看模型在哪些情况下容易判断错误。
