@@ -1,0 +1,79 @@
+AirSpotter Project Log
+Date: 2026-09-21
+
+1. Goal
+
+Today the project tested whether the existing ResNet18 image classifier could be reused to locate airports in large satellite maps without retraining the model.
+
+中文备注：今天尝试在不重新训练模型的情况下，用现有 ResNet18 在大地图中定位机场。
+
+2. Large-map scanner
+
+Created src/scan_large_image.py.
+
+The current scanner:
+- Divides an 8192 x 4320 image into a 48 x 24 base grid.
+- Scans individual cells, non-overlapping 3 x 3 groups, and non-overlapping 4 x 4 groups.
+- Runs four grid positions: original, half-cell horizontal shift, half-cell vertical shift, and both shifts.
+- Uses separate thresholds for the three levels.
+- Combines the three scores with weights of 20%, 35%, and 45%.
+- Merges adjacent positive cells.
+- Requires support from at least two grid positions.
+- Expands each candidate by 25% and confirms it using the original crop plus horizontal and vertical flips.
+- Saves an annotated image, final candidate CSV, and all grid scores.
+
+Default thresholds:
+- Single cell: 0.65
+- 3 x 3 group: 0.85
+- 4 x 4 group: 0.90
+- Combined score: 0.78
+- Confirmation score: 0.85
+
+中文备注：扫描器会进行三种尺度和四种网格位置的判断，再合并和二次确认候选区域。每张大图约执行 5408 次模型判断。
+
+3. Test images and results
+
+Three 8192 x 4320 Google Earth images were tested. The source images remain local under data/manual/ and are ignored by Git.
+
+large_map.jpg:
+- Final candidates: 5
+- The airport was found, but additional false positives remained.
+
+large_map2.jpg:
+- Final candidates: 0
+- An airport candidate survived the grid stages but received only 67.76% during crop confirmation, below the 85% threshold.
+
+large_map3.jpg:
+- Final candidates: 5
+- Part of one airport was found, another airport was missed, and false positives remained.
+
+中文备注：第一张能找到机场但误报增加；第二张机场被确认阶段过滤；第三张只找到部分机场并漏掉另一个机场。参数在三张图之间存在冲突。
+
+4. Main finding
+
+Grid tuning improved one image but did not produce stable accuracy across all three maps. Lower thresholds recover some missed airports but also increase false positives. Higher thresholds reduce false positives but remove real airports.
+
+The main limitation is the model rather than the grid code. The classifier was trained on centered RESISC45 scenes, while large-map scanning presents partial runways, cities, wetlands, coastlines, and different ground scales. High softmax scores do not guarantee correct detections on these new images.
+
+中文备注：继续调整网格和阈值无法稳定解决问题。现有模型没有针对大地图切块、局部跑道和复杂背景进行训练。
+
+5. Generated files
+
+For each large map, results/ contains:
+- *_detected.jpg: Annotated candidate regions.
+- *_detections.csv: Final candidate coordinates and scores.
+- *_all_scores.csv: Scores from all grid positions and scales.
+
+The original large maps are not committed because data/ is ignored by Git.
+
+6. Recommended next step
+
+Keep the current scanner as an experimental baseline. For reliable localization, collect multiple large maps, annotate airport boxes, generate training tiles at the same scale as inference, add current false positives as hard negatives, and retrain. Split data by airport or city so the same location does not appear in both training and evaluation.
+
+中文备注：下一步应制作与大地图扫描一致的数据并重新训练。第三张地图可保留为独立测试图，不参与训练。
+
+Project status:
+
+AirSpotter V1 image classification is complete. The large-map scanner is an experimental V1.5 prototype. Its current results are not reliable enough for general airport localization.
+
+中文备注：V1 分类已完成；V1.5 大地图定位原型已跑通，但当前准确性不足，暂不能作为可靠的机场定位系统。

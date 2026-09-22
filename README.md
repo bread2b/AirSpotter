@@ -22,7 +22,8 @@ AirSpotter/
 │   ├── split_dataset.py    # Split the dataset / 划分数据
 │   ├── train.py            # Train ResNet18 / 训练模型
 │   ├── evaluate.py         # Test the model / 评估模型
-│   └── predict.py          # Predict one image / 单图预测
+│   ├── predict.py          # Predict one image / 单图预测
+│   └── scan_large_image.py # Scan a large map / 扫描大地图
 ├── outputs/                # Saved model and training results / 模型和训练结果
 ├── results/                # Additional charts / 其他图表
 ├── notebooks/              # Jupyter notebooks / 笔记本
@@ -85,6 +86,24 @@ The run in `outputs/20260919_120214_330283/` contains:
 Next: test more images from different sources and inspect mistakes.
 
 下一步：用更多不同来源的图片测试，看看模型在哪些情况下容易判断错误。
+
+## Large Map Scan / 大地图扫描
+
+The scanner uses a 48 by 24 base grid and scans individual cells, 3 by 3 groups, and 4 by 4 groups. It repeats the scan at four half-cell offsets, combines the three scale scores, merges adjacent cells, and confirms each candidate using an expanded crop. This is an experimental use of the classifier and is not yet reliable across different maps.
+
+扫描器先把地图划分成 48 列、24 行，分别扫描单格、3×3 和 4×4 区域，再用四种半格偏移重复扫描。程序综合三种尺度的分数、合并相邻网格，并扩大候选区域进行二次确认。这只是复用分类模型的实验方案，目前在不同地图上的表现还不稳定。
+
+Put the large image in `data/manual/`, then run:
+
+把大地图放入 `data/manual/`，然后运行：
+
+```powershell
+.\.venv\Scripts\python.exe src/scan_large_image.py --image "data/manual/large_map.jpg" --checkpoint "outputs/20260919_120214_330283/best_model.pth"
+```
+
+The annotated image, final candidate CSV, and complete grid-score CSV are saved in `results/`.
+
+带方框的图片、最终候选坐标和全部网格分数会保存在 `results/`。
 
 ## Test Commands / 测试指令
 
