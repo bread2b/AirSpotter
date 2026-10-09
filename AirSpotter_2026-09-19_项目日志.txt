@@ -1,0 +1,220 @@
+AirSpotter Project Log
+Date: 2026-09-19
+Format: English main text with Chinese notes
+
+1. Milestone
+
+The AirSpotter V1 airport/non-airport classification prototype is complete.
+The full workflow now runs: dataset preparation, visual inspection, dataset splitting, GPU training, test evaluation, error analysis, and single-image inference.
+The baseline achieved 97.62% accuracy on the current RESISC45-based binary test set. This is not an estimate of global airport recognition accuracy.
+
+中文备注：V1 二分类原型已完成，整个流程已经跑通。97.62% 仅代表当前测试集表现，不代表全球卫星影像上的识别准确率。
+
+2. Work Completed Today
+
+1) Ran prepare_dataset.py to prepare 700 airport images and 700 non-airport images.
+   The negative set contains 70 images from each of 10 scene categories.
+2) Ran show_samples.py and visually checked the images and labels. No obvious issues were reported.
+3) Created and ran split_dataset.py with seed 42 and non-overlapping splits.
+   Negative images were grouped by their original scene category before splitting.
+4) Fixed a floating-point truncation issue: int(700 * 0.70) produced 489. Replacing int() with round() produced the intended split sizes.
+5) Installed PyTorch and torchvision and verified actual GPU matrix computation on the RTX 5070.
+6) Created train.py and fine-tuned a pretrained ResNet18 for binary classification.
+7) Created evaluate.py and exported test predictions to CSV.
+8) Inspected the five misclassified test images.
+9) Created and used predict.py for single-image inference on external imagery.
+10) Added outputs/ to .gitignore. Today's GitHub commit/push has not yet been confirmed.
+
+中文备注：今天完成了数据整理、划分、GPU 配置、训练、测试和预测。划分时少一张的问题来自浮点数截断，已修复。今天新增代码是否已 push，尚未确认。
+
+3. Dataset Split
+
+Split        Airport    Non-airport    Total
+Train        490        490            980
+Validation   105        105            210
+Test         105        105            210
+Total        700        700            1400
+
+The training set updates model parameters. The validation set selects the checkpoint. The test set evaluates the selected model and was not used for training or checkpoint selection.
+
+中文备注：训练集用于学习，验证集用于选模型，测试集用于最终评估。保留这次划分，不要为了提高分数反复重分数据。
+
+4. Environment and Training Configuration
+
+Operating system: Windows
+Terminal: PowerShell
+Virtual environment: .venv
+Python: 3.12.14
+PyTorch: 2.11.0+cu128
+Torchvision: 0.26.0+cu128
+GPU: NVIDIA GeForce RTX 5070, approximately 12 GB VRAM
+CUDA available: True
+GPU computation test: Passed
+
+Architecture: ResNet18 with ImageNet-pretrained weights
+Classifier: Replaced with a two-output linear layer
+Training strategy: Fine-tune all model parameters
+Class mapping: airport = 0; non_airport = 1
+Input size: 224 x 224
+Training augmentation: Random horizontal and vertical flips
+Normalization: Mean and standard deviation associated with the pretrained weights
+Validation/test/inference preprocessing: Fixed resizing and the same normalization, without random flips
+Epochs: 10
+Batch size: 32
+Learning rate: 0.0001
+Optimizer: Adam
+Loss function: CrossEntropyLoss
+Random seed: 42
+Checkpoint selection: Lowest validation loss
+
+A fixed seed improves reproducibility but does not guarantee bitwise-identical results across environments.
+
+中文备注：使用预训练 ResNet18，把最后一层改成两类输出，并微调整个网络。所有输入最终缩放为 224 x 224。最佳模型按验证 loss 选择，不是按最后一轮选择。
+
+5. Training History
+
+Epoch  Train loss  Train acc  Val loss  Val acc
+01     0.2467      89.39%     0.0966    97.62%
+02     0.0908      96.94%     0.0691    98.10%
+03     0.0487      98.47%     0.0368    99.05%
+04     0.0337      98.57%     0.0661    98.10%
+05     0.0288      99.29%     0.0441    98.57%
+06     0.0131      99.69%     0.0506    98.57%
+07     0.0099      99.69%     0.0536    98.10%
+08     0.0083      99.90%     0.0390    98.10%
+09     0.0041      100.00%    0.0658    98.10%
+10     0.0075      99.90%     0.0875    97.14%
+
+Best epoch: 3
+Best validation loss: 0.0368
+Validation accuracy at the best epoch: 99.05% (208/210 correct)
+
+Training loss continued to decrease after epoch 3, while validation performance generally worsened. This suggests overfitting.
+best_model.pth contains the epoch 3 checkpoint, not the epoch 10 model.
+Current decision: Keep this baseline; do not simply add more epochs under the same settings.
+
+中文备注：第 3 轮最好。后面训练集成绩继续提高，验证集表现却整体变差，出现过拟合迹象。暂时不需要继续堆训练轮数。
+
+6. Test Results
+
+Test loss: 0.0638
+Accuracy: 97.62% (205/210)
+Airport precision: 98.08% (102/104)
+Airport recall: 97.14% (102/105)
+Airport F1: 97.61%
+
+Confusion matrix:
+Rows = actual labels; columns = predicted labels.
+Class order: airport, non_airport.
+
+[[102,   3],
+ [  2, 103]]
+
+Correctly identified airports: 102
+Missed airports: 3
+Correctly identified non-airport images: 103
+False airport detections: 2
+
+中文备注：210 张测试图片中，205 张正确。漏掉 3 张机场，把 2 张非机场误认成机场。Precision 表示预测为机场的图片有多少是真的；Recall 表示真实机场中找到了多少。
+
+7. Error Analysis
+
+Image                         Actual        Predicted     Airport score
+airport_0373.jpg              airport       non_airport   26.20%
+airport_0511.jpg              airport       non_airport   49.50%
+airport_0580.jpg              airport       non_airport   12.94%
+railway_station_005.jpg       non_airport   airport       97.62%
+rectangular_farmland_030.jpg  non_airport   airport       65.88%
+
+The railway station is a high-score false positive. Parallel tracks and elongated structures may resemble some airport features.
+Partial airport views, small targets, and background changes may contribute to missed detections.
+These are visual hypotheses, not verified explanations of what the model actually used.
+Softmax scores are model outputs and are not guaranteed probabilities of correctness.
+Keep all misclassified samples. Do not remove images or change labels merely because the model predicted them incorrectly.
+
+中文备注：铁路站属于高分误报。相似结构、局部视角和尺度变化可能影响识别，但尚未验证模型实际关注的位置。不能因为模型判错就删除样本或修改标签。
+
+8. External Image Experiment
+
+An external satellite image showed a triangular runway layout surrounded by farmland and buildings.
+The user reported that the original framing failed, while a tighter crop with less surrounding content was recognized successfully.
+This changed the field of view rather than merely reducing the image's pixel dimensions.
+Both versions are ultimately resized to 224 x 224. Cropping reduces background and increases the airport's relative size at the same time.
+The observation suggests sensitivity to framing in this example. It does not isolate whether background or target scale is the main cause.
+The exact scores for the original and cropped images have not yet been recorded.
+One external example is insufficient to estimate overall external performance.
+
+中文备注：裁掉周围多余边缘后能识别，说明这次预测对取景范围敏感。裁剪同时减少背景、放大机场占比，目前不能确定哪个因素更重要。两张图的具体分数还未记录。
+
+9. Important Files and Commands
+
+Project directory:
+C:\Users\bread\OneDrive\桌面\AirSpotter
+
+Scripts:
+src/prepare_dataset.py - Prepare the binary dataset.
+src/show_samples.py - Display samples for visual inspection.
+src/split_dataset.py - Create train, validation, and test splits.
+src/train.py - Train the model and save the lowest-validation-loss checkpoint.
+src/evaluate.py - Evaluate the test set and export predictions.
+src/predict.py - Classify a single image.
+
+Run output directory:
+outputs/20260919_120214_330283/
+
+Generated files:
+best_model.pth - Best model checkpoint, class mapping, and preprocessing metadata.
+history.csv - Per-epoch training and validation metrics.
+test_predictions.csv - Per-image test labels, predictions, and airport scores.
+
+Single-image prediction command:
+Run from the project root with .venv activated.
+
+python src/predict.py --image "data/manual/demo.jpg" --checkpoint "outputs/20260919_120214_330283/best_model.pth"
+
+predict.py performs whole-image classification. It does not locate airports or draw bounding boxes.
+
+中文备注：预测时只需替换 --image 后面的图片路径。当前功能是整张图分类，还不能画框定位机场。outputs/ 被 Git 忽略，需要单独备份模型和结果。
+
+10. Next Session
+
+Immediate priorities:
+1) Update README with the V1 milestone, environment, commands, results, and limitations.
+2) Check git status and commit/push the new scripts and documentation.
+3) Back up the checkpoint and run outputs separately; git push does not include ignored outputs/ files.
+4) Save the original external image and its crop, with their scores, source, and verified labels.
+5) Collect external imagery from different airports and non-airport scenes for a systematic evaluation, including failures.
+
+中文备注：先整理项目、提交代码、单独备份模型，再收集外部图片做系统评估；不能只挑成功案例展示。
+
+Possible improvements:
+1) Implement multi-scale tiled inference and evaluate both missed detections and false positives. This feature has not been implemented yet.
+2) If external performance is weak, consider more diverse training data, different augmentation, or a revised training strategy.
+3) Split new data by airport location or region to avoid similar crops of the same location appearing across training and evaluation sets.
+4) If current test errors guide repeated model changes, obtain a new independent test set. The existing test set should no longer be treated as completely unseen evidence for those changes.
+5) Longer term: move to V2 object detection to predict airport locations.
+
+中文备注：后续可尝试多尺度切图，但也要检查误报是否增加。同一地点的相似图片不要跨训练和评估集合。如果根据测试错误反复调模型，需要新的独立测试集。
+
+11. Progress Checklist
+
+[Done] Prepare and inspect 700 airport + 700 non-airport images.
+[Done] Split the dataset into train, validation, and test sets.
+[Done] Configure and verify the PyTorch GPU environment.
+[Done] Train the ResNet18 baseline.
+[Done] Evaluate the held-out test set.
+[Done] Inspect the five test errors.
+[Done] Implement single-image inference.
+[Done] Observe framing sensitivity in an external example.
+[Pending] Update README and confirm today's code commit/push.
+[Pending] Back up the checkpoint and outputs separately.
+[Pending] Conduct a broader external evaluation.
+[Pending] Implement and evaluate multi-scale tiled inference.
+
+中文备注：V1 主流程已完成，后续重点是整理成果和验证泛化；全球识别与目标检测仍是后续阶段。
+
+Project Status Statement
+
+AirSpotter V1 is a completed airport/non-airport classification prototype. It achieved 97.62% accuracy on a RESISC45-based test set. Generalization to imagery from new sources requires further evaluation.
+
+中文备注：AirSpotter V1 二分类原型已完成，当前测试集准确率为 97.62%；新来源卫星影像的泛化能力仍需进一步验证。

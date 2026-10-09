@@ -39,19 +39,28 @@ def make_group_tiles(
     group_size,
     offset_x=0,
     offset_y=0,
+    context_scale=1.0,
 ):
     """Build aligned, non-overlapping groups of base grid cells."""
     for row in range(0, rows, group_size):
         top = offset_y + row * tile_height
         for column in range(0, columns, group_size):
             left = offset_x + column * tile_width
-            right = min(left + tile_width * group_size, image.width)
-            bottom = min(top + tile_height * group_size, image.height)
-            box = (left, top, right, bottom)
+            base_width = tile_width * group_size
+            base_height = tile_height * group_size
+            crop_width = round(base_width * context_scale)
+            crop_height = round(base_height * context_scale)
+            center_x = left + base_width // 2
+            center_y = top + base_height // 2
+            crop_left = max(0, center_x - crop_width // 2)
+            crop_top = max(0, center_y - crop_height // 2)
+            right = min(crop_left + crop_width, image.width)
+            bottom = min(crop_top + crop_height, image.height)
+            box = (crop_left, crop_top, right, bottom)
             tile = pad_tile(
                 image.crop(box),
-                tile_width * group_size,
-                tile_height * group_size,
+                crop_width,
+                crop_height,
             )
             yield box, row, column, tile
 
@@ -98,6 +107,7 @@ def scan_offset(
     large_threshold,
     combined_threshold,
     minimum_cells,
+    small_context_scale,
 ):
     cells_by_position = {}
     level_counts = {}
@@ -112,6 +122,7 @@ def scan_offset(
             group_size,
             offset_x,
             offset_y,
+            small_context_scale if group_size == 1 else 1.0,
         ))
         level_counts[group_size] = len(records)
         scored_groups = score_tiles(
@@ -414,6 +425,70 @@ def save_results(
     return image_output, csv_output, tile_csv_output
 
 
+def save_scale_previews(
+    image,
+    cells,
+    image_path,
+    output_dir,
+    tile_width,
+    tile_height,
+    columns,
+    rows,
+    thresholds,
+):
+    """Save one clean preview for each scale using the original grid."""
+    output_paths = []
+    original_cells = {
+        (cell["row"], cell["column"]): cell
+        for cell in cells
+        if cell["offset"] == "original"
+    }
+
+    for group_size, threshold in thresholds.items():
+        annotated = image.copy()
+        draw = ImageDraw.Draw(annotated)
+        group_width = tile_width * group_size
+        group_height = tile_height * group_size
+
+        for left in range(group_width, image.width, group_width):
+            draw.line(
+                (left, 0, left, image.height),
+                fill=(210, 210, 0),
+                width=2,
+            )
+        for top in range(group_height, image.height, group_height):
+            draw.line(
+                (0, top, image.width, top),
+                fill=(210, 210, 0),
+                width=2,
+            )
+
+        score_key = f"score_{group_size}x{group_size}"
+        for row in range(0, rows, group_size):
+            for column in range(0, columns, group_size):
+                cell = original_cells[(row, column)]
+                if cell[score_key] < threshold:
+                    continue
+                left = column * tile_width
+                top = row * tile_height
+                box = (
+                    left,
+                    top,
+                    min(left + group_width, image.width),
+                    min(top + group_height, image.height),
+                )
+                draw.rectangle(box, outline="red", width=8)
+
+        output_path = (
+            output_dir
+            / f"{image_path.stem}_scale_{group_size}x{group_size}.jpg"
+        )
+        annotated.save(output_path, quality=95)
+        output_paths.append(output_path)
+
+    return output_paths
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Find possible airport regions in a large image."
@@ -449,6 +524,12 @@ def main():
     )
     parser.add_argument(
         "--minimum-offset-hits", type=int, default=2
+    )
+    parser.add_argument(
+        "--small-context-scale",
+        type=float,
+        default=1.5,
+        help="Context multiplier for 1x1 cells (default: 1.5).",
     )
     parser.add_argument(
         "--minimum-cells",
@@ -488,6 +569,8 @@ def main():
         raise ValueError("--minimum-offset-hits must be between 1 and 4.")
     if args.max_candidates <= 0:
         raise ValueError("--max-candidates must be positive.")
+    if args.small_context_scale < 1:
+        raise ValueError("--small-context-scale must be at least 1.")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, transform, airport_index = load_model(args.checkpoint, device)
@@ -527,6 +610,7 @@ def main():
             args.large_threshold,
             args.combined_threshold,
             args.minimum_cells,
+            args.small_context_scale,
         )
         all_cells.extend(cells)
         all_groups.extend(groups)
@@ -570,6 +654,21 @@ def main():
         tile_width,
         tile_height,
     )
+    scale_outputs = save_scale_previews(
+        image,
+        all_cells,
+        args.image,
+        args.output_dir,
+        tile_width,
+        tile_height,
+        args.grid_columns,
+        args.grid_rows,
+        {
+            1: args.small_threshold,
+            3: args.medium_threshold,
+            4: args.large_threshold,
+        },
+    )
 
     print("Image:", args.image.resolve())
     print("Image size:", image.size)
@@ -584,6 +683,8 @@ def main():
     print("Annotated image:", image_output.resolve())
     print("Detection CSV:", csv_output.resolve())
     print("All score CSV:", tile_csv_output.resolve())
+    for output_path in scale_outputs:
+        print("Scale preview:", output_path.resolve())
     print("\nBoxes are approximate candidate regions, not exact boundaries.")
 
 

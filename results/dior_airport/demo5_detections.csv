@@ -1,0 +1,4 @@
+x1,y1,x2,y2,confidence,class,supporting_tiles
+3923,2164,4038,2565,0.604004,airport,2
+2728,647,2979,1701,0.546387,airport,3
+1914,2522,2306,3515,0.447021,airport,3

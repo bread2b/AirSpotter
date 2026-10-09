@@ -105,6 +105,20 @@ The annotated image, final candidate CSV, and complete grid-score CSV are saved 
 
 带方框的图片、最终候选坐标和全部网格分数会保存在 `results/`。
 
+## DIOR Airport Detector / DIOR 机场检测
+
+The DIOR-trained YOLOv5 model detects airport locations directly. Large maps are split into 1280-pixel tiles, and repeated boxes are merged automatically.
+
+这个 YOLOv5 模型用 DIOR 卫星图数据训练，可以直接标出机场位置。程序会分块扫描大图，并自动合并重复方框。
+
+```powershell
+.\.venv\Scripts\python.exe src\test_dior_airport.py data\manual\demo6.jpg
+```
+
+Results are saved in `results/dior_airport/`.
+
+结果保存在 `results/dior_airport/`。
+
 ## Test Commands / 测试指令
 
 Run from the project root in PowerShell. No environment activation is needed.
